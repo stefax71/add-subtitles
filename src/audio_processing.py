@@ -4,7 +4,7 @@ from pydub import AudioSegment
 from pydub.silence import detect_silence
 from audio_segment_chunk import AudioSegmentChunk
 
-def split_audio_in_chunks(audio_path, silence_duration=1500, buffer_duration=150):
+def split_audio_in_chunks(audio_path, silence_duration=1500, buffer_duration=150, max_chunk_duration=8000):
     audio = AudioSegment.from_wav(audio_path)
     silence_threshold = audio.dBFS - 16
     silences = detect_silence(audio, min_silence_len=silence_duration, silence_thresh=silence_threshold)
@@ -12,21 +12,26 @@ def split_audio_in_chunks(audio_path, silence_duration=1500, buffer_duration=150
     start_time = 0
 
     for start, end in silences:
-        # Aggiungi un buffer alla fine per includere le parole troncate
         end_with_buffer = min(end + buffer_duration, len(audio))
 
-        chunk = AudioSegmentChunk(start_time, end_with_buffer, audio[start_time:end_with_buffer])
-        chunks.append(chunk)
-        chunk.export()  # Esporta utilizzando la logica di naming originale
-        start_time = end
-        print(chunk)
+        while start_time < end_with_buffer:
+            chunk_end_time = min(start_time + max_chunk_duration, end_with_buffer)
+            chunk = AudioSegmentChunk(start_time, chunk_end_time, audio[start_time:chunk_end_time])
+            chunks.append(chunk)
+            chunk.export()
+            print(chunk)
 
-    # Aggiungi l'ultimo chunk se c'è del materiale rimanente
-    if start_time < len(audio):
-        chunk = AudioSegmentChunk(start_time, len(audio), audio[start_time:])
+            start_time = chunk_end_time
+
+        start_time = end_with_buffer
+
+    while start_time < len(audio):
+        chunk_end_time = min(start_time + max_chunk_duration, len(audio))
+        chunk = AudioSegmentChunk(start_time, chunk_end_time, audio[start_time:chunk_end_time])
         chunks.append(chunk)
-        chunk.export()  # Esporta anche l'ultimo chunk
-        print("Adding last entry as ", chunk)
+        chunk.export()
+        print("(last)", chunk)
+        start_time = chunk_end_time
 
     return chunks
 

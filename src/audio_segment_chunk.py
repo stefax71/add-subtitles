@@ -74,11 +74,7 @@ class AudioSegmentChunk:
         return (start_srt, end_srt)
 
     def add_text(self, text):
-        try:
-            data = json.loads(text)
-            self.text = self.text + " " + data.get("text", "")
-        except json.JSONDecodeError:
-            print("Not a valid JSON")
+        self.text = text
 
     def export(self):
         temp_path = "/app/videos/tmp/"

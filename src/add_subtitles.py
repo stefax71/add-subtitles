@@ -32,7 +32,9 @@ def process_file(video_path):
     subprocess.run(command, check=True)
 
     chunks = split_audio_in_chunks(audio_path)
-    entries = recognize_speech(chunks, "/app/vosk-model/vosk-model-it-0.22")
+
+    entries = recognize_speech(chunks)
+
     save_entries_to_srt(entries, filename= output_dir + "/output_original_unprocessed.srt")
 
 

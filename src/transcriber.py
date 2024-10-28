@@ -1,27 +1,27 @@
 # speech_recognition.py
-import wave
-from vosk import Model, KaldiRecognizer
+from concurrent.futures import as_completed
+from concurrent.futures.thread import ThreadPoolExecutor
 
+from whisperer_recognize import recognize_from_audio
 from srt_generator import generate_srt_entry
 
+def process_chunk(chunk):
+    try:
+        print("Processing chunk: ", chunk.audio_file_name)
+        text = recognize_from_audio(chunk.audio_file_name)
+        chunk.add_text(text)
+    except Exception as e:
+        print("Error processing chunk ", chunk.audio_file_name ,": ", e)
 
-def recognize_speech(chunks, model_path):
-    model = Model(model_path)
-    rec = KaldiRecognizer(model, 16000)
+
+def recognize_speech(chunks):
     entries = []
-    for chunk in chunks:
-        print("************************************", flush=True)
-        print("Processing chunk: ", chunk, flush=True)
-        with wave.open(chunk.audio_file_name, "rb") as wf:
-            while True:
-                data = wf.readframes(1000)
-                if len(data) == 0:
-                    break
-                if rec.AcceptWaveform(data):
-                    res = rec.Result()
-                    print("Text found: ", res, flush=True)
-                    chunk.add_text(res)
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(process_chunk, chunk): chunk for chunk in chunks}
+        for future in as_completed(futures):
+            future.result()
 
-    for i, chunk in enumerate(chunks):
-        entries.append(generate_srt_entry(chunk, chunk.text, i))
+    chunks.sort(key=lambda x: x.start)
+
+    entries = [generate_srt_entry(chunk, chunk.text, i) for i, chunk in enumerate(chunks)]
     return entries
