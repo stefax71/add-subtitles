@@ -1,3 +1,4 @@
 pydub
 vosk
 openai
+python-dotenv

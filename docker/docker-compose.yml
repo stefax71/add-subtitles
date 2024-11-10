@@ -15,4 +15,4 @@ services:
       - PYTHONPATH=/app/src
       - VOSK_MODEL=vosk-model-it-0.22
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    command: python -u src/add_subtitles.py
+    command: python -u src/launch.py
