@@ -5,14 +5,11 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      args:
-        MODEL_URL: https://alphacephei.com/vosk/models/vosk-model-it-0.22.zip
     container_name: add_subtitles_container
     volumes:
       - ${HOST_VIDEOS_PATH}:/app/videos
     working_dir: /app
     environment:
       - PYTHONPATH=/app/src
-      - VOSK_MODEL=vosk-model-it-0.22
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     command: python -u src/launch.py
