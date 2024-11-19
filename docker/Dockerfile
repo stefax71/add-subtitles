@@ -7,6 +7,8 @@ COPY requirements.txt requirements.txt
 # Installs the required python packages
 RUN pip install -r requirements.txt
 
+RUN pip install git+https://github.com/openai/whisper.git
+
 # Installs ffmpeg e wget
 RUN apt-get update && apt-get install -y ffmpeg unzip wget
 

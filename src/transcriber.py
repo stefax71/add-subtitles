@@ -3,7 +3,7 @@ from concurrent.futures import as_completed
 from concurrent.futures.thread import ThreadPoolExecutor
 
 from whisperer_recognize import recognize_from_audio
-from srt_generator import generate_srt_entry
+
 
 def process_chunk(chunk):
     try:
@@ -23,5 +23,5 @@ def recognize_speech(chunks):
 
     chunks.sort(key=lambda x: x.start)
 
-    entries = [generate_srt_entry(chunk, chunk.text, i) for i, chunk in enumerate(chunks)]
+    entries = [generate_srt_entry(chunk, chunk.original_text, i) for i, chunk in enumerate(chunks)]
     return entries

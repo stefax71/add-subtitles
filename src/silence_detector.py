@@ -4,6 +4,7 @@ import subprocess
 from pydub import AudioSegment
 from pydub.silence import detect_silence
 
+
 class AudioSilence:
     def __init__(self, start: int, end: int):
         self.start = start
@@ -15,15 +16,26 @@ class AudioSilence:
 
 
 class Segment:
-    def __init__(self, start: float, end: float, duration: float):
+    def __init__(self, start: int, end: int, duration: int, translated_text:str = None):
         self.start = start
         self.end = end
         self.duration = duration
-        self.text = None
+        self.original_text = None
+        self.translated_text = translated_text
         self.audio_file = None
 
     def __str__(self):
-        return f"Segment: {self.start} - {self.end} ({self.duration}) - recognized text {self.text}"
+        return f"Segment: {self.start} - {self.end} ({self.duration}) - recognized text {self.original_text}"
+
+    def get_srt_timestamps(self):
+        return self.translate_to_timestamp(self.start), self.translate_to_timestamp(self.end)
+
+    def translate_to_timestamp(self, milliseconds: int) -> str:
+        ore = milliseconds // (1000 * 60 * 60)
+        minuti = (milliseconds // (1000 * 60)) % 60
+        secondi = (milliseconds // 1000) % 60
+        msec = milliseconds % 1000
+        return f"{ore:02}:{minuti:02}:{secondi:02},{msec:03}"
 
 
 class SegmentsDetector:
@@ -39,27 +51,56 @@ class SegmentsDetector:
         remaining_seconds = seconds % 60
         return f"{hours:02d}:{minutes:02d}:{remaining_seconds:02d}"
 
+
+    def merge_silences(self, silences: list[int], min_duration: int):
+        """
+        Merges consecutive silences if the gap between them is less than the specified minimum duration.
+
+        Args:
+            silences (list of list of int): A list of silences, where each silence is represented as a list [start, end].
+            min_duration (int): The minimum duration (in milliseconds) between consecutive silences to consider them separate.
+
+        Returns:
+            list of list of int: A list of merged silences.
+        """
+        merged = []
+        for silence in silences:
+            if not merged:
+                # If the merged list is empty, add the first silence
+                merged.append(silence)
+            else:
+                prev_start, prev_end = merged[-1]
+                curr_start, curr_end = silence
+                # If the gap between the end of the previous silence and the start of the current silence is less than the minimum duration
+                if curr_start - prev_end < min_duration:
+                    # Merge the current silence with the previous one
+                    merged[-1] = [prev_start, max(prev_end, curr_end)]
+                else:
+                    # Otherwise, add the current silence as a new entry
+                    merged.append(silence)
+        return merged
+
     def detect_segments(self):
         # Carica l'audio completo
         print("Detecting silences")
         audio = AudioSegment.from_file(self.audio_file, format="wav")
 
         silence_threshold = audio.dBFS - 16
-        silences = detect_silence(audio, min_silence_len=300, silence_thresh=silence_threshold)
+        silences = detect_silence(audio, min_silence_len=800, silence_thresh=silence_threshold)
 
         segments = []
+        silences = self.merge_silences(silences, 3000)
+
         previous_silence = None
         for silence in silences:
-            silence_object = AudioSilence(silence[0], silence[1])
             if previous_silence is not None:
                 duration = silence[0] - previous_silence
-                print("Chunk da ", self.format_time(previous_silence), " a ", self.format_time(silence[0]), " durata ms", duration)
+                print("Chunk da ", self.format_time(previous_silence), " a ", self.format_time(silence[0]),
+                      " durata ms", duration)
                 segment = Segment(start=previous_silence, end=silence[0], duration=duration)
                 segments.append(segment)
             previous_silence = silence[1]
-
         return segments
-
 
         # subprocess.run(
         #     ['ffmpeg', '-i', self.audio_file, '-af', 'silencedetect=noise=-30dB:d=0.5', '-f', 'null', '-'],

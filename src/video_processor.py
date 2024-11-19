@@ -5,7 +5,9 @@ import tempfile
 from pydub import AudioSegment
 from pydub.silence import detect_silence
 
+import config
 from silence_detector import SegmentsDetector
+from srt_generator import SrtGenerator
 from whisperer_recognize import recognize_from_audio
 
 
@@ -28,16 +30,28 @@ class VideoProcessor:
         segments_detector = SegmentsDetector(audio_path, self.temp_dir)
         segments = segments_detector.detect_segments()
 
-        audio = AudioSegment.from_file(audio_path, format="wav")
 
-        for segment in segments:
-            print("Processing segment: ", segment)
-            chunk = audio[segment.start:segment.end]
+        audio = AudioSegment.from_file(audio_path, format="wav")
+        for i, segment in enumerate(segments):
+            delta = 0
+            delta_end = 0
+
+            if i > 0:
+                delta = (segment.start - segments[i - 1].end) // 2
+            if i < len(segments) - 1:
+                delta_end = (segments[i + 1].start - segment.end) // 2
+
+            start = segment.start - delta
+            end = segment.end + delta_end
+            chunk = audio[start:end]
             wave_file = self.temp_dir + "/chunk_" + str(segment.start) + ".wav"
             chunk.export(wave_file, format="wav")
             segment.audio_file = wave_file
             recognize_from_audio(segment)
-            print(segment)
+
+        srt_generator = SrtGenerator(segments)
+        srt_generator.generate_srt(max_duration=10)
+        srt_generator.write(config.base_path + "/english.srt")
 
 
     def extract_audio(self):
