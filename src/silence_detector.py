@@ -86,7 +86,7 @@ class SegmentsDetector:
         audio = AudioSegment.from_file(self.audio_file, format="wav")
 
         silence_threshold = audio.dBFS - 16
-        silences = detect_silence(audio, min_silence_len=800, silence_thresh=silence_threshold)
+        silences = detect_silence(audio, min_silence_len=600, silence_thresh=silence_threshold)
 
         segments = []
         silences = self.merge_silences(silences, 3000)

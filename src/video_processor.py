@@ -1,4 +1,5 @@
 import os
+import pickle
 import subprocess
 import tempfile
 
@@ -32,6 +33,7 @@ class VideoProcessor:
 
 
         audio = AudioSegment.from_file(audio_path, format="wav")
+
         for i, segment in enumerate(segments):
             delta = 0
             delta_end = 0
@@ -49,8 +51,13 @@ class VideoProcessor:
             segment.audio_file = wave_file
             recognize_from_audio(segment)
 
+
+        with open(self.temp_dir + "/segments.dat", "ab") as dest_file:
+            pickle.dump(segments, dest_file)
+
+        exit(0)
         srt_generator = SrtGenerator(segments)
-        srt_generator.generate_srt(max_duration=10)
+        srt_generator.generate_srt()
         srt_generator.write(config.base_path + "/english.srt")
 
 
@@ -60,7 +67,7 @@ class VideoProcessor:
         audio_path = os.path.join(self.temp_dir, "audio_temp_16k_mono.wav")
         # Estrai e converte l'audio a 16kHz mono
         command = [
-            "ffmpeg", "-i", self.file_path, "-ac", "1", "-ar", "16000", "-sample_fmt", "s16", audio_path
+            "ffmpeg", "-i", self.file_path, "-ac", "1", "-ar", "16000", "-sample_fmt", "s16", "-filter:a", "volume=5dB", audio_path
         ]
         subprocess.run(command, check=True)
         return audio_path

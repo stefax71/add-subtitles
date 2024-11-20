@@ -13,7 +13,7 @@ def recognize_from_audio(seg: Segment):
         prompt="Considera un contesto assicurativo vita in cui si parla si switch, swap, finanziario, tassi di interesse.",
         model="whisper-1",
         file=audio_file,
-        temperature=0.3
+        temperature=0.2
     )
     print("DEBUG -> ", translation.text)
     seg.original_text = translation.text
@@ -27,6 +27,7 @@ def recognize_from_audio(seg: Segment):
                     "Traduci il testo seguente in inglese, e rispondi esclusivamente con il testo tradotto. "
                     "Presta attenzione a non usare altre lingue oltre l'inglese"
                     "Non utilizzare punti alla fine delle frasi."
+                    "Presta attenzione alla terminologia che sia coerente con l'ambito assicurativo vita e cerca di mantenere il significato originale del testo."
                 )
             },
             {

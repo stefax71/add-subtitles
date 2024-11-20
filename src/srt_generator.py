@@ -1,4 +1,5 @@
 # srt_generation.py
+import math
 import re
 
 import config
@@ -45,7 +46,7 @@ class SrtGenerator:
 
 
     # Refined function to split subtitles and ensure proper text segmentation
-    def split_long_lines_into_chunks(self, subs, max_duration=10):
+    def split_long_lines_into_chunks(self, subs, max_duration: int = 15):
         new_subs = []
         for sub in subs:
             start_seconds = self.time_to_milliseconds(sub.start)
@@ -53,30 +54,49 @@ class SrtGenerator:
             duration = end_seconds - start_seconds
             print("-" * 20)
             print("Original entry is ", str(sub))
-            print("Processing entry #", sub.index, " starting at ", start_seconds, " end at " , end_seconds,   " with duration ", duration, " seconds")
+            print("Processing entry #", sub.index, " starting at ", start_seconds, " end at ", end_seconds,
+                  " with duration ", duration, " milliseconds")
 
-            if duration > (max_duration * 1000):
-                print("Splitting entry")
-                # Spezza il file tenendo conto della lunghezza in secondi e del numero di parole
-                # così da calcolare in modo ragionevolmente corretto dove iniziano i sotto-chunks
-
+            max_duration_msec = max_duration * 1000
+            if duration > max_duration_msec:
+                print(f"It's longer than ${max_duration_msec} Splitting entry")
                 words = sub.text.split()
-                avg_words_per_chunk = len(words) / int( ((duration // max_duration) // 1000) + 1)
+                num_chunks = int(max(1, math.floor(duration // max_duration_msec)))
+                avg_words_per_chunk = max(1, len(words) // num_chunks)
 
                 chunk_start = start_seconds
-                for i in range(0, len(words), int(avg_words_per_chunk)):
-                    chunk_end = min(chunk_start + (max_duration * 1000), end_seconds)
-                    chunk_text = ' '.join(words[i:i + int(avg_words_per_chunk)])
+                for i in range(num_chunks):
+                    chunk_end = min(chunk_start + (max_duration_msec), end_seconds)
+                    chunk_words = words[i * avg_words_per_chunk:(i + 1) * avg_words_per_chunk]
 
-                    sub = SubtitleElement(index = len(new_subs) + 1, start=self.seconds_to_time(chunk_start), end=self.seconds_to_time(chunk_end), text=chunk_text)
-                    new_subs.append(sub)
+                    # Se il chunk_end è uguale al chunk_start, aggiungi un piccolo offset per evitare errori
+                    if chunk_end <= chunk_start:
+                        chunk_end = chunk_start + 500  # Aggiungi 500ms come buffer minimo
+
+                    # Assegna le parole rimaste all'ultimo chunk
+                    if i == num_chunks - 1:
+                        chunk_words = words[i * avg_words_per_chunk:]
+
+                    chunk_text = ' '.join(chunk_words)
+
+                    new_sub = SubtitleElement(
+                        index=len(new_subs) + 1,
+                        start=self.seconds_to_time(chunk_start),
+                        end=self.seconds_to_time(chunk_end),
+                        text=chunk_text
+                    )
+                    new_subs.append(new_sub)
 
                     chunk_start = chunk_end
             else:
-                sub = SubtitleElement(index=len(new_subs) + 1, start=sub.start, end=sub.end, text=sub.text)
-                new_subs.append(sub)
+                new_sub = SubtitleElement(
+                    index=len(new_subs) + 1,
+                    start=sub.start,
+                    end=sub.end,
+                    text=sub.text
+                )
+                new_subs.append(new_sub)
         return new_subs
-
 
     def time_to_milliseconds(self, timestamp):
         hours, minutes, seconds, msec = map(float, re.split('[:,.]', timestamp))
