@@ -24,7 +24,7 @@ class SrtGenerator:
         self.entries = []
 
 
-    def generate_srt(self, max_duration=10):
+    def generate_srt(self, max_duration=8):
         entries = self.generate_srt_entry()
         self.entries = self.split_long_lines_into_chunks(entries, max_duration)
         return self.entries
@@ -61,42 +61,40 @@ class SrtGenerator:
             if duration > max_duration_msec:
                 print(f"It's longer than ${max_duration_msec} Splitting entry")
                 words = sub.text.split()
-                num_chunks = int(max(1, math.floor(duration // max_duration_msec)))
-                avg_words_per_chunk = max(1, len(words) // num_chunks)
+
+                word_average_duration: int = int(duration) // len(words)
+                chunk_duration = 0
 
                 chunk_start = start_seconds
-                for i in range(num_chunks):
-                    chunk_end = min(chunk_start + (max_duration_msec), end_seconds)
-                    chunk_words = words[i * avg_words_per_chunk:(i + 1) * avg_words_per_chunk]
+                current_sentence = ""
+                chunk_words = []
 
-                    # Se il chunk_end è uguale al chunk_start, aggiungi un piccolo offset per evitare errori
-                    if chunk_end <= chunk_start:
-                        chunk_end = chunk_start + 500  # Aggiungi 500ms come buffer minimo
+                while len(words) > 0:
+                    chunk_words.append(words.pop(0))
+                    chunk_duration += word_average_duration
 
-                    # Assegna le parole rimaste all'ultimo chunk
-                    if i == num_chunks - 1:
-                        chunk_words = words[i * avg_words_per_chunk:]
-
-                    chunk_text = ' '.join(chunk_words)
-
-                    new_sub = SubtitleElement(
-                        index=len(new_subs) + 1,
-                        start=self.seconds_to_time(chunk_start),
-                        end=self.seconds_to_time(chunk_end),
-                        text=chunk_text
-                    )
-                    new_subs.append(new_sub)
-
-                    chunk_start = chunk_end
+                    if chunk_duration > max_duration_msec:
+                        self.add_chunk(chunk_duration, chunk_start, chunk_words, new_subs)
+                        chunk_start += chunk_duration
+                        chunk_duration = 0
+                        chunk_words = []
+                # Adds the last chunk
+                self.add_chunk(chunk_duration, chunk_start, chunk_words, new_subs)
             else:
-                new_sub = SubtitleElement(
-                    index=len(new_subs) + 1,
-                    start=sub.start,
-                    end=sub.end,
-                    text=sub.text
-                )
-                new_subs.append(new_sub)
+                new_subs.append(sub)
+
         return new_subs
+
+    def add_chunk(self, chunk_duration, chunk_start, chunk_words, new_subs):
+        chunk_text = ' '.join(chunk_words)
+        if len(chunk_text.strip()) > 0:
+            new_sub = SubtitleElement(
+                index=len(new_subs) + 1,
+                start=self.seconds_to_time(chunk_start),
+                end=self.seconds_to_time(chunk_start + chunk_duration),
+                text=chunk_text
+            )
+            new_subs.append(new_sub)
 
     def time_to_milliseconds(self, timestamp):
         hours, minutes, seconds, msec = map(float, re.split('[:,.]', timestamp))

@@ -25,7 +25,7 @@ class Segment:
         self.audio_file = None
 
     def __str__(self):
-        return f"Segment: {self.start} - {self.end} ({self.duration}) - recognized text {self.original_text}"
+        return f"Segment: {self.start} - {self.end} ({self.duration}) - recognized text ->> {self.original_text}"
 
     def get_srt_timestamps(self):
         return self.translate_to_timestamp(self.start), self.translate_to_timestamp(self.end)

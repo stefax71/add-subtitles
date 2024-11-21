@@ -18,6 +18,7 @@ class TestSrtGenerator(unittest.TestCase):
             data = pickle.load(file)
         srt_generator = SrtGenerator(data)
         entries = srt_generator.generate_srt()
+        srt_generator.write("test.srt")
         print(data)
 
     def test_generate_srt(self):

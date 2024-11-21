@@ -55,7 +55,6 @@ class VideoProcessor:
         with open(self.temp_dir + "/segments.dat", "ab") as dest_file:
             pickle.dump(segments, dest_file)
 
-        exit(0)
         srt_generator = SrtGenerator(segments)
         srt_generator.generate_srt()
         srt_generator.write(config.base_path + "/english.srt")
